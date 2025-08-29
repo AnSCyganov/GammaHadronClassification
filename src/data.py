@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
-from imblearn.over_sampling import RandomOverSampler
+from imblearn.over_sampling import RandomOverSampler, SMOTE
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
@@ -18,8 +17,8 @@ def set_col_names(name):
         return name
 
 def set_binary_class(df):
-    if (df['class'].unique()).shape[0] != 2:
-        print(f"Предупреждение: количество классов должно быть равно 2")
+    if len(df['class'].unique()) != 2:
+        raise ValueError(f'Количество классов должно быть 2 !')
     else:
         df['class'] = (df['class'] == 'g').astype(int)
 
@@ -30,16 +29,22 @@ def split_data(df):
     train, valid, test = np.split(df.sample(frac=1), [int(0.6 * len(df)), int(0.8 * len(df))])
     return train, valid, test
 
-def Scale_DF(df, oversample=False):
-    X = df[df.columns[:-1].values]
-    y = df['class'].values
+def scale_fit_transform(train_df, scaler, oversample=False):
+    X = train_df[train_df.columns[:-1].values]
+    y = train_df['class'].values
 
-    scaler = StandardScaler()
     X = scaler.fit_transform(X)
 
     if oversample:
         ros = RandomOverSampler()
         X,y = ros.fit_resample(X,y)
 
-    df =np.hstack((X,y.reshape(-1,1)))
-    return df, X, y
+    return X, y
+
+def scale_transform(df, scaler):
+    X = df[df.columns[:-1].values]
+    y = df['class'].values
+
+    X = scaler.transform(X)
+
+    return X, y
