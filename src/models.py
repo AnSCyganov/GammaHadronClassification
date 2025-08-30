@@ -1,24 +1,36 @@
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import classification_report
 
-def knn_model(X_train, y_train, X_test, y_test, n_neighbors):
-    if n_neighbors == 0:
-        return "Количество соседей не может быть меньше 1"
+MODELS = {
+    'knn' : KNeighborsClassifier,
+    'svm' : SVC
+}
+
+def create_model(model_name, **kwargs):
+    if model_name not in MODELS:
+        raise ValueError(f'Модель {model_name} не найдена'
+                         f'\nДоступные модели: {list(MODELS.keys())}')
+    return MODELS[model_name](**kwargs)
+
+def grid_search(model_name, param_grid, X_train, y_train, scoring=None, cv=5, n_jobs=-1):
+    model = create_model(model_name=model_name)
+    grid = GridSearchCV(estimator=model, param_grid=param_grid, scoring=scoring, cv=cv, n_jobs=n_jobs)
+    grid.fit(X_train, y_train)
+    return grid.best_estimator_, grid.best_params_, grid.best_score_
+
+def train_and_evaluate(model_name, X_train, y_train, X_test, y_test, param_grid=None, scoring=None, cv=5, **kwargs):
+    if param_grid:
+        base_model = create_model(model_name)
+        model, best_params, best_score = grid_search(model_name=model_name, param_grid=param_grid, X_train=X_train, y_train=y_train, scoring=scoring, cv=cv)
+        print(f'Топ модель: {model} с параметрами: {best_params} и скором: {best_score}')
     else:
-        knn = KNeighborsClassifier(n_neighbors=n_neighbors)
-        knn.fit(X_train, y_train)
-        y_pred = knn.predict(X_test)
-        report = classification_report(y_test, y_pred)
-        return report
+        model = create_model(model_name, **kwargs)
+        model.fit(X_train, y_train)
 
-from sklearn.svm import SVC
+    y_pred = model.predict(X_test)
 
+    print(f'Отчет о модели: {model_name}:\n{classification_report(y_test, y_pred)}')
 
-def svm_model(X_train, y_train, X_test, y_test, C, kernel, class_weight, gamma=None):
-    if kernel == "linear":
-        svm = SVC(kernel=kernel, class_weight=class_weight, C=C, random_state=42)
-    else:
-        svm = SVC(kernel=kernel, class_weight=class_weight, C=C, gamma=gamma, random_state=42)
-    svm.fit(X_train, y_train)
-    y_pred = svm.predict(X_test)
-    return classification_report(y_test, y_pred)
+    return model

@@ -10,23 +10,24 @@ def load_data(name, col_names):
     data = pd.read_csv('data/' + name, names=col_names)
     return data
 
-def set_col_names(name):
-    if type(name) is not list:
-        print(f"Предупреждение: требуется тип данных : {list}")
-    else:
-        return name
+def get_magic_col_names():
+    return ['fLenght', 'fWidth', 'fSize', 'fConc', 'fConcl', 'fAsym', 'fM3Long', 'fM3Trans', 'fAlpha', 'fDist', 'class']
 
-def set_binary_class(df):
-    if len(df['class'].unique()) != 2:
-        raise ValueError(f'Количество классов должно быть 2 !')
-    else:
-        df['class'] = (df['class'] == 'g').astype(int)
+def set_binary_class(df, positive_class):
+    unique_classes = df['class'].unique()
+    if len(unique_classes) != 2:
+        raise ValueError(f'Ожидалось 2 класса, найдено {unique_classes}')
+    df['class'] = (df['class'] == positive_class).astype(int)
 
 def count_classes(df):
     return len(df[df['class'] == 1]), len(df[df['class'] == 0])
 
 def split_data(df):
-    train, valid, test = np.split(df.sample(frac=1), [int(0.6 * len(df)), int(0.8 * len(df))])
+    shuffled_df = df.sample(frac=1, random_state = 42).reset_index(drop=True)
+
+    train_size, valid_size = int(0.6 * len(shuffled_df)), int(0.8 * len(shuffled_df))
+    train, valid, test = np.split(shuffled_df, [train_size, valid_size])
+
     return train, valid, test
 
 def scale_fit_transform(train_df, scaler, oversample=False):
@@ -39,7 +40,7 @@ def scale_fit_transform(train_df, scaler, oversample=False):
         ros = RandomOverSampler()
         X,y = ros.fit_resample(X,y)
 
-    return X, y
+    return X, y, scaler
 
 def scale_transform(df, scaler):
     X = df[df.columns[:-1].values]
@@ -47,4 +48,4 @@ def scale_transform(df, scaler):
 
     X = scaler.transform(X)
 
-    return X, y
+    return X, y, scaler
